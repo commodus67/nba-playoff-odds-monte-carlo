@@ -1,0 +1,350 @@
+{
+    "actorSpecification": 1,
+    "name": "nba-playoff-odds-monte-carlo",
+    "title": "NBA Playoff Odds API — Monte Carlo Simulator & Value Bets",
+    "description": "Replays every remaining NBA game thousands of times for playoff, play-in, division, conference and championship probabilities for all 30 teams, priced against live Kalshi contracts.",
+    "version": "0.0",
+    "buildTag": "latest",
+    "dockerfile": "../Dockerfile",
+    "input": {
+        "title": "NBA Playoff Odds Monte Carlo Simulator",
+        "type": "object",
+        "schemaVersion": 1,
+        "properties": {
+            "iterations": {
+                "title": "Monte Carlo iterations",
+                "type": "integer",
+                "description": "How many full seasons to simulate. More iterations give smoother probabilities and a longer run.",
+                "default": 20000,
+                "minimum": 1000,
+                "maximum": 200000,
+                "unit": "seasons"
+            },
+            "season": {
+                "title": "Season",
+                "type": "integer",
+                "description": "ESPN names a season by the year it ENDS, so 2026-27 is 2027. Leave empty to pick the current season automatically.",
+                "editor": "number"
+            },
+            "archiveToNamedDataset": {
+                "title": "Also archive to a named dataset",
+                "type": "string",
+                "description": "Optional. Name a dataset in your account and every run appends its rows there as well. Run datasets are deleted after 31 days; a named dataset is kept, which is how you build a season-long history of how these probabilities moved.",
+                "editor": "textfield",
+                "default": ""
+            },
+            "regressionGames": {
+                "title": "Regression games",
+                "type": "integer",
+                "description": "How many games of prior are mixed into each team's rating. Higher values pull teams toward their preseason expectation for longer.",
+                "default": 20,
+                "minimum": 0,
+                "maximum": 82,
+                "unit": "games"
+            },
+            "pythagoreanWeight": {
+                "title": "Pythagorean weight",
+                "type": "number",
+                "description": "How much of a team's rating comes from points scored and allowed rather than from its actual win-loss record. Point differential predicts the rest of the season better than record does.",
+                "default": 0.65,
+                "minimum": 0,
+                "maximum": 1
+            },
+            "homeAdvantage": {
+                "title": "Home court advantage",
+                "type": "number",
+                "description": "Home edge in log-odds. The default of 0.32 makes an evenly matched home team a 57.9% favourite, which is where the NBA has settled.",
+                "default": 0.32,
+                "minimum": 0,
+                "maximum": 1
+            },
+            "strengthUncertainty": {
+                "title": "Strength uncertainty",
+                "type": "number",
+                "description": "How unsure the model is of each team's true strength, in log-odds. Each simulated season redraws every rating once. Set to 0 to treat the ratings as exact, which makes the probabilities far more confident than they deserve to be.",
+                "default": 0.22,
+                "minimum": 0,
+                "maximum": 1
+            },
+            "priorCarryover": {
+                "title": "Prior carryover",
+                "type": "number",
+                "description": "How much of last season's point differential carries into this season's starting rating. At 0 every team opens at .500 and the preseason table is meaningless; at 1 nothing regresses toward the mean.",
+                "default": 0.6,
+                "minimum": 0,
+                "maximum": 1
+            },
+            "seasonLength": {
+                "title": "Regular season length",
+                "type": "integer",
+                "description": "Games per team. ESPN publishes 80 of the 82 before the season starts because two depend on the NBA Cup; the gap is simulated against an average opponent so win totals stay on an 82-game scale.",
+                "default": 82,
+                "minimum": 1,
+                "maximum": 100,
+                "unit": "games"
+            },
+            "minGamesPlayedForValue": {
+                "title": "Games played before value calls",
+                "type": "integer",
+                "description": "Until each team has played this many games, no row is allowed to call itself VALUE. In October the model only knows how last season ended, so its biggest edges are really the offseason it cannot see. Edges are still reported in full; every row is simply labelled WATCH.",
+                "default": 10,
+                "minimum": 0,
+                "maximum": 82,
+                "unit": "games"
+            },
+            "includeMarketComparison": {
+                "title": "Compare against Kalshi",
+                "type": "boolean",
+                "description": "Fetch live prices from the Kalshi playoff-qualifier market and compute edge, expected value and position sizing. Turn off for projections only.",
+                "default": true
+            },
+            "includePlayInMarkets": {
+                "title": "Include the play-in markets",
+                "type": "boolean",
+                "description": "Also price the two per-conference play-in markets. Careful: these settle on finishing 7th to 10th, which is NOT making the playoffs, so they are compared against a different column. They are also far less liquid.",
+                "default": false
+            },
+            "includeChampionshipMarket": {
+                "title": "Include the championship market",
+                "type": "boolean",
+                "description": "Also price the outright title market by simulating the full bracket, including home court and the play-in.",
+                "default": false
+            },
+            "edgeThreshold": {
+                "title": "Edge threshold",
+                "type": "number",
+                "description": "How far the model has to be from the market before a row is called VALUE.",
+                "default": 0.05,
+                "minimum": 0,
+                "maximum": 1
+            },
+            "feeRate": {
+                "title": "Fee rate",
+                "type": "number",
+                "description": "Kalshi's taker fee coefficient. The fee per contract is rate x price x (1 - price). Assuming taker is deliberate and conservative; a maker pays roughly a quarter of it.",
+                "default": 0.07,
+                "minimum": 0,
+                "maximum": 0.5
+            },
+            "bankroll": {
+                "title": "Bankroll",
+                "type": "integer",
+                "description": "Optional. With a bankroll set, each VALUE row gets a quarter-Kelly position size, capped per position and in total. Leave at 0 for no sizing.",
+                "default": 0,
+                "minimum": 0,
+                "unit": "USD"
+            },
+            "maxPerPositionPct": {
+                "title": "Max per position",
+                "type": "integer",
+                "description": "Cap on any single position as a percentage of bankroll.",
+                "default": 5,
+                "minimum": 0,
+                "maximum": 100,
+                "unit": "%"
+            },
+            "maxTotalExposurePct": {
+                "title": "Max total exposure",
+                "type": "integer",
+                "description": "Cap on the sum of all suggested positions as a percentage of bankroll.",
+                "default": 25,
+                "minimum": 0,
+                "maximum": 100,
+                "unit": "%"
+            }
+        }
+    },
+    "output": {
+        "actorOutputSchemaVersion": 1,
+        "title": "NBA playoff odds output",
+        "description": "One row per NBA team with playoff, play-in, division, conference and championship probabilities, a projected win total, strength estimates, and the edge against live Kalshi contracts.",
+        "properties": {
+            "teamProjections": {
+                "type": "string",
+                "title": "Team projections",
+                "description": "All 30 team rows: playoff, play-in, division, conference and title probabilities, projected record, and the market comparison.",
+                "template": "{{links.apiDefaultDatasetUrl}}/items"
+            }
+        }
+    },
+    "storages": {
+        "dataset": {
+            "actorSpecification": 1,
+            "title": "NBA team projections",
+            "views": {
+                "overview": {
+                    "title": "Playoff overview",
+                    "transformation": {
+                        "fields": [
+                            "conference",
+                            "team",
+                            "projectedWins",
+                            "fairPlayoffProbability",
+                            "fairTopSixProbability",
+                            "fairPlayInProbability",
+                            "averageSeed"
+                        ]
+                    },
+                    "display": {
+                        "component": "table",
+                        "properties": {
+                            "conference": {
+                                "label": "Conference"
+                            },
+                            "team": {
+                                "label": "Team"
+                            },
+                            "projectedWins": {
+                                "label": "Projected wins"
+                            },
+                            "fairPlayoffProbability": {
+                                "label": "Playoff %"
+                            },
+                            "fairTopSixProbability": {
+                                "label": "Top 6 %"
+                            },
+                            "fairPlayInProbability": {
+                                "label": "Play-in %"
+                            },
+                            "averageSeed": {
+                                "label": "Avg seed"
+                            }
+                        }
+                    }
+                },
+                "edge": {
+                    "title": "Market edge",
+                    "transformation": {
+                        "fields": [
+                            "team",
+                            "marketTicker",
+                            "marketSide",
+                            "marketPrice",
+                            "fairPlayoffProbability",
+                            "edge",
+                            "expectedValuePerContract",
+                            "call",
+                            "suggestedContracts",
+                            "suggestedStake"
+                        ]
+                    },
+                    "display": {
+                        "component": "table",
+                        "properties": {
+                            "team": {
+                                "label": "Team"
+                            },
+                            "marketTicker": {
+                                "label": "Kalshi ticker"
+                            },
+                            "marketSide": {
+                                "label": "Side"
+                            },
+                            "marketPrice": {
+                                "label": "Price"
+                            },
+                            "fairPlayoffProbability": {
+                                "label": "Model %"
+                            },
+                            "edge": {
+                                "label": "Edge"
+                            },
+                            "expectedValuePerContract": {
+                                "label": "EV / contract"
+                            },
+                            "call": {
+                                "label": "Call"
+                            },
+                            "suggestedContracts": {
+                                "label": "Contracts"
+                            },
+                            "suggestedStake": {
+                                "label": "Stake"
+                            }
+                        }
+                    }
+                },
+                "playin": {
+                    "title": "Play-in race",
+                    "transformation": {
+                        "fields": [
+                            "conference",
+                            "team",
+                            "projectedWins",
+                            "averageSeed",
+                            "fairTopSixProbability",
+                            "fairPlayInProbability",
+                            "fairPlayoffProbability"
+                        ]
+                    },
+                    "display": {
+                        "component": "table",
+                        "properties": {
+                            "conference": {
+                                "label": "Conference"
+                            },
+                            "team": {
+                                "label": "Team"
+                            },
+                            "projectedWins": {
+                                "label": "Projected wins"
+                            },
+                            "averageSeed": {
+                                "label": "Avg seed"
+                            },
+                            "fairTopSixProbability": {
+                                "label": "Top 6 %"
+                            },
+                            "fairPlayInProbability": {
+                                "label": "Play-in %"
+                            },
+                            "fairPlayoffProbability": {
+                                "label": "Playoff %"
+                            }
+                        }
+                    }
+                },
+                "title": {
+                    "title": "Title odds",
+                    "transformation": {
+                        "fields": [
+                            "team",
+                            "conference",
+                            "fairDivisionProbability",
+                            "fairBestRecordProbability",
+                            "fairConferenceFinalsProbability",
+                            "fairConferenceProbability",
+                            "fairChampionshipProbability"
+                        ]
+                    },
+                    "display": {
+                        "component": "table",
+                        "properties": {
+                            "team": {
+                                "label": "Team"
+                            },
+                            "conference": {
+                                "label": "Conference"
+                            },
+                            "fairDivisionProbability": {
+                                "label": "Division %"
+                            },
+                            "fairBestRecordProbability": {
+                                "label": "Best record %"
+                            },
+                            "fairConferenceFinalsProbability": {
+                                "label": "Conf. finals %"
+                            },
+                            "fairConferenceProbability": {
+                                "label": "Conf. title %"
+                            },
+                            "fairChampionshipProbability": {
+                                "label": "Championship %"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

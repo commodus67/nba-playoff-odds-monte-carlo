@@ -1,0 +1,7 @@
+{
+    "team-projection": {
+        "eventTitle": "Team projection",
+        "eventDescription": "One NBA team row: playoff, play-in, division, conference and championship probabilities, a projected win total, and the comparison against live Kalshi contracts.",
+        "eventPriceUsd": 0.003
+    }
+}
