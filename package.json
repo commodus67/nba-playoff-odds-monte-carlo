@@ -1,0 +1,15 @@
+{
+  "name": "nba-playoff-odds-monte-carlo",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Monte Carlo NBA regular season, play-in and playoff simulator with Kalshi value bets.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "apify": "^3.2.6"
+  },
+  "license": "ISC"
+}
