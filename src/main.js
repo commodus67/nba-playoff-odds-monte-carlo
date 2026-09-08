@@ -1,4 +1,4 @@
-import { Actor } from 'apify';
+import { Actor, log } from 'apify';
 import {
   buildRatings,
   simulateSeason,
@@ -67,7 +67,7 @@ let rosterSeason = SEASON;
  */
 if (!teams.length) {
   rosterSeason = SEASON - 1;
-  Actor.log.info(`ESPN has no ${SEASON} standings yet; taking the club list and division map from ${rosterSeason}.`);
+  log.info(`ESPN has no ${SEASON} standings yet; taking the club list and division map from ${rosterSeason}.`);
   const previous = await loadTeams(rosterSeason);
   teams = previous.map((t) => ({ ...t, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 }));
 }
@@ -89,10 +89,10 @@ try {
     t.priorTalent = 0.5 + (talent - 0.5) * PRIOR_CARRYOVER;
   }
 } catch (err) {
-  Actor.log.warning(`No ${priorSeason} standings to build a prior from (${err.message}); every team starts at .500.`);
+  log.warning(`No ${priorSeason} standings to build a prior from (${err.message}); every team starts at .500.`);
 }
 
-const { games, scheduled } = await loadRemainingGames(teams, SEASON, { log: (m) => Actor.log.warning(m) });
+const { games, scheduled } = await loadRemainingGames(teams, SEASON, { log: (m) => log.warning(m) });
 
 /**
  * ESPN lists 80 of the 82 games before the season starts: the last two depend on
@@ -113,12 +113,12 @@ const leagueGamesPlayed = Math.round(
 );
 const allowValue = leagueGamesPlayed >= MIN_GAMES_FOR_VALUE;
 
-Actor.log.info(
+log.info(
   `NBA ${SEASON}: ${teams.length} teams, ${games.length} games left, ${leagueGamesPlayed} played per team, `
   + `${totalShortfall} unscheduled game slots, ${ITERATIONS} iterations.`,
 );
 if (!allowValue) {
-  Actor.log.info(
+  log.info(
     `Value calls are held back until each team has played ${MIN_GAMES_FOR_VALUE} games. `
     + 'Edges are still reported in full, but every row is labelled WATCH.',
   );
@@ -147,7 +147,7 @@ async function addMarket({ eventTicker, label, probabilityKey, targetSum, rows }
   try {
     const outcomes = await fetchKalshiEvent(eventTicker);
     if (!outcomes.length) {
-      Actor.log.warning(`Kalshi returned no contracts for ${eventTicker}.`);
+      log.warning(`Kalshi returned no contracts for ${eventTicker}.`);
       return;
     }
     const integrity = marketIntegrity(outcomes, targetSum);
@@ -161,14 +161,14 @@ async function addMarket({ eventTicker, label, probabilityKey, targetSum, rows }
       allowValue,
       marketLabel: label,
     });
-    Actor.log.info(
+    log.info(
       `${label} (${eventTicker}): listed ${result.outcomesListed}, matched ${result.matched}, `
       + `price sum ${integrity.sum} vs target ${targetSum} (${integrity.ok ? 'ok' : 'CHECK'}).`,
     );
-    if (result.unmatched.length) Actor.log.warning(`Unmatched contracts: ${result.unmatched.join(', ')}`);
+    if (result.unmatched.length) log.warning(`Unmatched contracts: ${result.unmatched.join(', ')}`);
     marketBlocks.push({ eventTicker, label, integrity, ...result });
   } catch (err) {
-    Actor.log.warning(`Market ${eventTicker} unavailable (${err.message}); projections are unaffected.`);
+    log.warning(`Market ${eventTicker} unavailable (${err.message}); projections are unaffected.`);
   }
 }
 
@@ -265,7 +265,7 @@ await Actor.charge({ eventName: 'team-projection', count: rows.length });
 if (ARCHIVE_DATASET) {
   const archive = await Actor.openDataset(ARCHIVE_DATASET, { forceCloud: true });
   await archive.pushData(rows);
-  Actor.log.info(`Also appended ${rows.length} rows to the named dataset "${ARCHIVE_DATASET}".`);
+  log.info(`Also appended ${rows.length} rows to the named dataset "${ARCHIVE_DATASET}".`);
 }
 
 await Actor.setValue('MARKET_COMPARISON', {
@@ -284,5 +284,5 @@ await Actor.setValue('MARKET_COMPARISON', {
   })),
 });
 
-Actor.log.info(`Done: ${rows.length} team projections for NBA ${SEASON}.`);
+log.info(`Done: ${rows.length} team projections for NBA ${SEASON}.`);
 await Actor.exit();
