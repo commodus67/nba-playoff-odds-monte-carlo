@@ -7,11 +7,8 @@ const ESPN_SITE = 'https://site.api.espn.com';
 const STANDINGS_PATH = '/apis/v2/sports/basketball/nba/standings';
 const SCHEDULE_PATH = '/apis/site/v2/sports/basketball/nba/teams';
 
-/* ESPN rejects requests without a browser-shaped user agent. */
-const USER_AGENT = 'Mozilla/5.0 (compatible; ApifyActor/1.0; +https://apify.com)';
-
 async function getJson(url) {
-  const res = await fetch(url, { headers: { accept: 'application/json', 'user-agent': USER_AGENT } });
+  const res = await fetch(url, { headers: { accept: 'application/json' } });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
   return res.json();
 }

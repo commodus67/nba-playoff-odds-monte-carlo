@@ -62,11 +62,8 @@ const NORMALIZED_ALIASES = new Map(
 
 /* ------------------------------------------------------------------ fetch -- */
 
-/* ESPN rejects requests without a browser-shaped user agent. */
-const USER_AGENT = 'Mozilla/5.0 (compatible; ApifyActor/1.0; +https://apify.com)';
-
 async function getJson(url) {
-  const res = await fetch(url, { headers: { accept: 'application/json', 'user-agent': USER_AGENT } });
+  const res = await fetch(url, { headers: { accept: 'application/json' } });
   if (!res.ok) throw new Error(`Kalshi ${res.status} for ${url}`);
   return res.json();
 }
