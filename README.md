@@ -99,6 +99,48 @@ teams whose entire case rests on the offseason — exactly what the gate is ther
   `yes_ask_dollars`; both sides of every contract are priced and the better one is used, so
   an overpriced favourite shows up as a chance to sell rather than as no signal at all.
 
+## FAQ
+
+### How are NBA playoff odds calculated?
+
+The Actor simulates every remaining regular-season game thousands of times. Team strength comes from point differential (Pythagorean expectation with the basketball exponent of 13.91), blended with the actual record and regressed toward last season, and each team's rating is redrawn once per simulated season so the output reflects real uncertainty. Each simulated season is then seeded by conference, the play-in is played, and the full bracket is run. A probability is the share of simulated seasons in which the outcome happened.
+
+### What is the difference between NBA playoff odds and play-in odds?
+
+Playoff odds are the chance of reaching the first round — finishing in the top six of the conference, or finishing 7th to 10th and surviving the play-in. Play-in odds are the chance of finishing 7th to 10th. That is a band, not a threshold: the best teams have high playoff odds and near-zero play-in odds. Kalshi lists them as separate markets and states that qualifying for the play-in does not count as playoff qualification.
+
+### How does the NBA play-in tournament work?
+
+In each conference, seeds 7 and 8 play; the winner takes the 7th seed. Seeds 9 and 10 play; the loser is eliminated. The loser of 7 v 8 then hosts the winner of 9 v 10 for the 8th seed. The Actor simulates those games instead of approximating them, which is what lets it report `fairPlayoffProbability`, `fairTopSixProbability` and `fairPlayInProbability` consistently.
+
+### How are NBA championship odds calculated?
+
+After the play-in, each simulated season runs four rounds of best-of-seven series with the 2-2-1-1-1 home-court pattern. That gives conference finals, conference title and championship probabilities for all 30 teams. Across the league the championship column sums to 1.
+
+### Why are projected wins on an 82-game scale when ESPN lists 80 games?
+
+Two games per team depend on the NBA Cup and are only scheduled after it. Those games are simulated against an average opponent on a neutral floor, so win totals are not quietly projected for an 80-game season.
+
+### Can I compare NBA playoff odds with Kalshi prices?
+
+Yes. The dataset compares the model with the live `KXNBAPLAYOFF` market, including edge, expected value after fees and an optional quarter-Kelly stake. Play-in (`KXNBAPLAYIN`) and championship comparisons, when enabled, are written to the `MARKET_COMPARISON` record in the run's key-value store.
+
+### Why does every row say WATCH before opening night?
+
+Before the season the model only knows how last season ended — not free agency, trades, the draft or injuries. Until every team has played `minGamesPlayedForValue` games (10 by default), no row can be labelled VALUE.
+
+### How can I track NBA playoff odds all season?
+
+Set `archiveToNamedDataset` (for example `nba-playoff-odds-history`) and schedule the Actor daily. Every run appends its 30 rows to a named dataset that Apify keeps indefinitely.
+
+### Do I need an API key?
+
+Not for the data: ESPN and Kalshi are read through public endpoints. You only need an Apify account to run the Actor.
+
+### Is this betting advice?
+
+No. It is a statistical simulation for research and analysis, not affiliated with the NBA, ESPN or Kalshi.
+
 ## Related Actors
 
 Same engine, other leagues: **MLB Playoff Odds**, **NFL Playoff Odds**, **NHL Playoff
